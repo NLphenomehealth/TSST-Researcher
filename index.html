@@ -12,6 +12,22 @@
         body { font-family: 'Inter', sans-serif; }
         .screen-mirror { transition: opacity 0.5s ease-in-out; }
         .hidden { display: none; }
+        .control-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            color: white;
+            transition: background-color 0.2s;
+        }
+        .btn-start { background-color: #22c55e; } /* green-500 */
+        .btn-start:hover { background-color: #16a34a; } /* green-600 */
+        .btn-stop { background-color: #ef4444; } /* red-500 */
+        .btn-stop:hover { background-color: #dc2626; } /* red-600 */
+        .btn-reset { background-color: #64748b; } /* slate-500 */
+        .btn-reset:hover { background-color: #475569; } /* slate-600 */
+        .btn-next { background-color: #4f46e5; } /* indigo-600 */
+        .btn-next:hover { background-color: #4338ca; } /* indigo-700 */
+
     </style>
 </head>
 <body class="bg-gray-800 flex items-center justify-center min-h-screen p-4">
@@ -33,6 +49,7 @@
             <!-- Mirror View Container -->
             <div id="mirror-view" class="hidden">
                 <div id="session-id-display" class="absolute bottom-4 left-4 bg-gray-200 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg"></div>
+                <div id="next-screen-container" class="absolute bottom-4 right-4"></div>
 
                 <!-- Welcome Screen Mirror -->
                 <div id="welcome-mirror" class="screen-mirror hidden">
@@ -47,50 +64,12 @@
                 <div id="preBaselineSurvey-mirror" class="screen-mirror hidden"></div>
                 <div id="postTaskSurvey-mirror" class="screen-mirror hidden"></div>
 
-                <!-- Baseline Screen Mirror -->
-                <div id="baseline-mirror" class="screen-mirror hidden">
-                     <div class="max-w-4xl mx-auto">
-                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Resting Baseline</h2>
-                        <p class="text-gray-600 mb-6">Participant is in the 3-minute resting period.</p>
-                        <div class="text-8xl font-mono font-bold my-4 text-gray-800" id="baselineTimer-mirror">3:00</div>
-                    </div>
-                </div>
-
-                <!-- Speech Preparation Mirror -->
-                <div id="speechPreparation-mirror" class="screen-mirror hidden">
-                    <div class="max-w-4xl mx-auto">
-                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Speech Preparation</h2>
-                        <p class="text-gray-600 mb-6">Participant is in the 5-minute speech preparation period.</p>
-                        <div class="text-8xl font-mono font-bold my-4 text-gray-800" id="prepTimer-mirror">5:00</div>
-                    </div>
-                </div>
-
-                <!-- Speech Delivery Mirror -->
-                <div id="speechDelivery-mirror" class="screen-mirror hidden">
-                    <div class="max-w-4xl mx-auto">
-                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Speech Delivery</h2>
-                        <p class="text-gray-600 mb-6">Participant is delivering their 5-minute speech.</p>
-                        <div class="text-8xl font-mono font-bold my-4 text-gray-800" id="speechTimer-mirror">5:00</div>
-                    </div>
-                </div>
-
-                <!-- Mental Arithmetic Mirror -->
-                <div id="mentalArithmetic-mirror" class="screen-mirror hidden">
-                    <div class="max-w-4xl mx-auto">
-                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Mental Math Challenge</h2>
-                        <p class="text-gray-600 mb-6">Participant is performing the mental arithmetic task.</p>
-                        <div class="text-8xl font-mono font-bold my-4 text-gray-800" id="mathTimer-mirror">5:00</div>
-                    </div>
-                </div>
-
-                <!-- Meal Screen Mirror -->
-                <div id="meal-mirror" class="screen-mirror hidden">
-                    <div class="max-w-4xl mx-auto">
-                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Meal Time</h2>
-                        <p class="text-gray-600 mx-auto mb-6">Participant is in the 5-minute meal period.</p>
-                        <div id="mealTimer-mirror" class="text-8xl font-mono font-bold my-4 text-gray-800">5:00</div>
-                    </div>
-                </div>
+                <!-- Generic Timer Screen Structure -->
+                <div id="baseline-mirror" class="screen-mirror hidden"></div>
+                <div id="speechPreparation-mirror" class="screen-mirror hidden"></div>
+                <div id="speechDelivery-mirror" class="screen-mirror hidden"></div>
+                <div id="mentalArithmetic-mirror" class="screen-mirror hidden"></div>
+                <div id="meal-mirror" class="screen-mirror hidden"></div>
 
                 <!-- Complete Screen Mirror -->
                 <div id="complete-mirror" class="screen-mirror hidden">
@@ -107,14 +86,27 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
         
         let db, auth;
         let unsubscribe = null;
         let lastRenderedScreen = null;
+        let currentSessionId = null;
+        let currentGameState = {};
+
+        const screenConfig = {
+            'welcome': { next: 'preBaselineSurvey', title: 'Start Protocol' },
+            'preBaselineSurvey': { next: 'baseline', title: 'Begin Baseline' },
+            'baseline': { next: 'speechPreparation', title: 'Go to Speech Prep', duration: 180 },
+            'speechPreparation': { next: 'speechDelivery', title: 'Begin Speech', duration: 300 },
+            'speechDelivery': { next: 'mentalArithmetic', title: 'Go to Math Task', duration: 300 },
+            'mentalArithmetic': { next: 'postTaskSurvey', title: 'End Math Task', duration: 300 },
+            'postTaskSurvey': { next: 'meal', title: 'Begin Meal' },
+            'meal': { next: 'complete', title: 'Finish Protocol', duration: 300 },
+            'complete': { next: null, title: null }
+        };
 
         window.onload = function() {
-            // This configuration MUST match the participant's application
             const firebaseConfig = {
                 apiKey: "AIzaSyC-Yc9Vr2aWSc1u8YCNVFk48ijcix2Sg2c",
                 authDomain: "tsst-d6836.firebaseapp.com",
@@ -135,10 +127,19 @@
             }
         };
 
+        function sendCommand(command) {
+            if (!currentSessionId) return;
+            const appId = "tsst-d6836";
+            const sessionRef = doc(db, `artifacts/${appId}/public/data/sessions`, currentSessionId);
+            const commandWithId = { ...command, commandId: crypto.randomUUID(), issuedAt: serverTimestamp() };
+            setDoc(sessionRef, { command: commandWithId }, { merge: true });
+        }
+        window.sendCommand = sendCommand;
+
         window.connectToSession = () => {
             const sessionId = document.getElementById('sessionIdField').value.trim().toUpperCase();
             const errorEl = document.getElementById('error-message');
-            const appId = "tsst-d6836"; // Must match the appId used in the participant's code
+            const appId = "tsst-d6836";
             
             if (sessionId.length !== 6) {
                 errorEl.textContent = 'Please enter a valid 6-character Session ID.';
@@ -146,8 +147,9 @@
             }
             errorEl.textContent = 'Connecting...';
             
-            if (unsubscribe) unsubscribe(); // Detach from previous session if any
+            if (unsubscribe) unsubscribe();
 
+            currentSessionId = sessionId;
             const sessionRef = doc(db, `artifacts/${appId}/public/data/sessions`, sessionId);
             
             unsubscribe = onSnapshot(sessionRef, (doc) => {
@@ -155,7 +157,8 @@
                     errorEl.textContent = '';
                     document.getElementById('sessionInput').style.display = 'none';
                     document.getElementById('mirror-view').style.display = 'block';
-                    renderState(doc.data());
+                    currentGameState = doc.data();
+                    renderState(currentGameState);
                 } else {
                     errorEl.textContent = `Session "${sessionId}" not found. Please check the ID.`;
                     document.getElementById('sessionInput').style.display = 'block';
@@ -171,7 +174,6 @@
         function renderState(state) {
             document.getElementById('session-id-display').innerHTML = `Mirroring Session: <span class="font-bold">${state.sessionId || ''}</span>`;
 
-            // Only redraw the whole screen if the screenId has changed
             if (state.screenId !== lastRenderedScreen) {
                 document.querySelectorAll('.screen-mirror').forEach(el => el.classList.add('hidden'));
                 const currentScreenEl = document.getElementById(`${state.screenId}-mirror`);
@@ -181,10 +183,32 @@
                 lastRenderedScreen = state.screenId;
             }
 
-            // Generic survey screen renderer
             const surveyHtml = (stressId) => `<div class="max-w-4xl mx-auto text-left space-y-4"><h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">Participant is Logging Stress Level</h2><p>Instructions shown to participant:</p><div class="bg-gray-100 p-4 rounded-lg border border-gray-300"><p>Please open the <strong>MyT1Diabetes</strong> app and open the <strong>I’ve Noticed</strong> feature.</p><p>Select ‘Write a note’, tap the text box and enter: <code class="bg-gray-200 text-red-600 p-1 rounded">Stress ${stressId}=[your response to the survey below]</code>.</p></div><p class="text-center font-semibold text-indigo-600 mt-4">Waiting for participant to click "Next"...</p></div>`;
+            
+            const timerScreenHtml = (title, description, timerId, timerValue) => {
+                const isRunning = state.timer && state.timer.running;
+                return `
+                    <div class="max-w-4xl mx-auto">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-4">${title}</h2>
+                        <p class="text-gray-600 mb-6">${description}</p>
+                        <div class="text-8xl font-mono font-bold my-4 text-gray-800" id="${timerId}-mirror">${timerValue}</div>
+                        <div class="flex justify-center items-center gap-4 mt-6">
+                            <button class="control-btn btn-start ${isRunning ? 'hidden' : ''}" onclick="sendCommand({type: 'timer', action: 'start'})">Start</button>
+                            <button class="control-btn btn-stop ${!isRunning ? 'hidden' : ''}" onclick="sendCommand({type: 'timer', action: 'stop'})">Stop</button>
+                            <button class="control-btn btn-reset" onclick="sendCommand({type: 'timer', action: 'reset'})">Reset</button>
+                        </div>
+                    </div>
+                `;
+            };
 
-            // Update content based on the current screen
+            const config = screenConfig[state.screenId] || {};
+            const nextScreenContainer = document.getElementById('next-screen-container');
+            if (config.next) {
+                nextScreenContainer.innerHTML = `<button class="control-btn btn-next" onclick="sendCommand({type: 'screen', screenId: '${config.next}'})">${config.title}</button>`;
+            } else {
+                nextScreenContainer.innerHTML = '';
+            }
+
             switch(state.screenId) {
                 case 'preBaselineSurvey':
                     document.getElementById('preBaselineSurvey-mirror').innerHTML = surveyHtml(0);
@@ -193,19 +217,19 @@
                     document.getElementById('postTaskSurvey-mirror').innerHTML = surveyHtml(1);
                     break;
                 case 'baseline':
-                    document.getElementById('baselineTimer-mirror').textContent = state.timerValue || '3:00';
+                    document.getElementById('baseline-mirror').innerHTML = timerScreenHtml('Resting Baseline', 'Participant is in the 3-minute resting period.', 'baselineTimer', state.timer?.value || '3:00');
                     break;
                 case 'speechPreparation':
-                    document.getElementById('prepTimer-mirror').textContent = state.timerValue || '5:00';
+                    document.getElementById('speechPreparation-mirror').innerHTML = timerScreenHtml('Speech Preparation', 'Participant is in the 5-minute speech preparation period.', 'prepTimer', state.timer?.value || '5:00');
                     break;
                 case 'speechDelivery':
-                    document.getElementById('speechTimer-mirror').textContent = state.timerValue || '5:00';
+                    document.getElementById('speechDelivery-mirror').innerHTML = timerScreenHtml('Speech Delivery', 'Participant is delivering their 5-minute speech.', 'speechTimer', state.timer?.value || '5:00');
                     break;
                 case 'mentalArithmetic':
-                    document.getElementById('mathTimer-mirror').textContent = state.timerValue || '5:00';
+                    document.getElementById('mentalArithmetic-mirror').innerHTML = timerScreenHtml('Mental Math Challenge', 'Participant is performing the mental arithmetic task.', 'mathTimer', state.timer?.value || '5:00');
                     break;
                 case 'meal':
-                    document.getElementById('mealTimer-mirror').textContent = state.timerValue || '5:00';
+                    document.getElementById('meal-mirror').innerHTML = timerScreenHtml('Meal Time', 'Participant is in the 5-minute meal period.', 'mealTimer', state.timer?.value || '5:00');
                     break;
             }
         }
