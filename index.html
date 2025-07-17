@@ -332,16 +332,14 @@
             
             let endTimeString = '(Time will be calculated upon connection)';
             if (sessionStartTime) {
-                // Default to researcher's time if participant offset is not available
-                let endTime = new Date(sessionStartTime.getTime() + (90 * 60 * 1000)); // 90 minutes, not 2 hours
+                // Calculate end time as 2 hours from session start
+                let endTime = new Date(sessionStartTime.getTime() + (2 * 60 * 60 * 1000));
                 
-                // Check for participant's timezone offset
+                // Adjust for participant's timezone if available
                 if (state.timezoneOffset !== undefined) {
                     const researcherOffset = sessionStartTime.getTimezoneOffset(); // in minutes
                     const participantOffset = state.timezoneOffset; // in minutes
                     const offsetDifferenceMs = (researcherOffset - participantOffset) * 60 * 1000;
-                    
-                    // Adjust the end time by the timezone difference
                     endTime = new Date(endTime.getTime() + offsetDifferenceMs);
                 }
                 
@@ -352,7 +350,7 @@
                 title: 'Debrief & Close',
                 participantSees: "Participant sees the 'Challenge Complete' screen.",
                 hasTimer: false,
-                script: `"Thank you for completing today's tasks. For the next 90 minutes, until approximately ${endTimeString}, please stay seated as much as possible and avoid food, beverages, and strenuous or stressful activity. After that 90-minute period, you may resume your normal routine. If your blood sugar falls out of range, either below 70 mg/dL or above 250 mg/dL, please treat as needed and contact the study coordinator. Do you have any questions before we end?"`,
+                script: `"Thank you for completing today's tasks. For the next 2 hours, until approximately ${endTimeString}, please stay seated as much as possible and avoid food, beverages, and strenuous or stressful activity. After that 2-hour period, you may resume your normal routine. If your blood sugar falls out of range, either below 70 mg/dL or above 250 mg/dL, please treat as needed and contact the study coordinator. Do you have any questions before we end?"`,
                 actions: ["Stop recording, end video call.", "If Final Challenge: Complete a debrief (Appendix C)."]
             });
         }
