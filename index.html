@@ -209,6 +209,13 @@
                     </div>
                 ` : '';
 
+                const contextHtml = config.context ? `
+                    <div class="mt-4">
+                        <h3>Context</h3>
+                        <p class="text-sm">${config.context}</p>
+                    </div>
+                ` : '';
+
                 return `
                     <div class="max-w-4xl mx-auto pt-12">
                         <h2 class="text-3xl font-bold text-gray-800 mb-2">${config.title}</h2>
@@ -218,8 +225,9 @@
                         <div class="info-box">
                             <h3>Researcher Script</h3>
                             <div class="script-text mb-4">${config.script}</div>
-                            <h3>Researcher Actions</h3>
+                            <h3>RC Instructions</h3>
                             <ul class="list-disc list-inside space-y-1">${config.actions.map(a => `<li>${a}</li>`).join('')}</ul>
+                            ${contextHtml}
                             ${appendixHtml}
                         </div>
                     </div>
@@ -244,7 +252,7 @@
                     "Confirm participant can see and hear you.",
                     "Confirm they have adequate time and the beverage nearby.",
                     "Confirm fasting, activity, and device status.",
-                    "Document any deviations."
+                    "Document how well the participant was able to follow the pre-challenge instructions and any deviations (e.g., if they didn't fast, what did they consume and when?)."
                 ]
             });
             
@@ -262,7 +270,7 @@
                 hasTimer: true,
                 timerDefault: '3:00',
                 script: `"For the next 3 minutes, please remain seated. Relax, and try to clear your mind, and remain still and quiet. You can leave your eyes open, or close them if you prefer. Please leave your camera on for the duration of this procedure. I'm going to step away, but we will still be monitoring you."`,
-                actions: ["Turn off your video camera.", "Monitor the participant.", "When the timer ends, turn your camera back on."]
+                actions: ["Turn off your video, but continue to monitor participant.", "When timer ends, turn camera back on and say: \"We’ll now move to the next phase. I’m going to start to record the call as we move into the performance section of this challenge, so that your performance can be later evaluated by an additional jury."\""]
             });
 
             document.getElementById('speechPreparation-mirror').innerHTML = fullScreenHtml({
@@ -271,7 +279,7 @@
                 hasTimer: true,
                 timerDefault: '5:00',
                 script: `"We're going to be assessing how well you perform in situations where you must project yourself as an expert. This is a type of personality test. I'd like you to use the imaginary situation where you will be applying for your dream job. Please imagine this ideal job. You will have 5 minutes to prepare a persuasive speech to convince me and an additional jury that you are the best candidate for this dream job as if you were applying for this job and were invited for an interview. After that you will have 5 minutes to give the speech. Please think silently, and refrain from taking any notes or writing anything down (and I'll be checking in on that). Your speech will be recorded for later evaluation by additional trained raters and there may be some follow-up questions once you complete your speech if time allows. Once I turn off my camera and start the 5 minute timer, your preparation will begin. The timer on the screen will let you know how much time you have left."`,
-                actions: ["Turn off your video camera.", "Start the timer.", "When the timer ends, turn your camera back on."]
+                actions: ["Turn off your video camera.", "Start the timer.", "When timer ends, turn camera back on and say: \"Please remain seated; we'll begin your speech in just a moment.\""]
             });
 
             document.getElementById('speechDelivery-mirror').innerHTML = fullScreenHtml({
@@ -282,10 +290,11 @@
                 script: `"Please begin your 5-minute speech. Remember, no notes. I will start the timer now."`,
                 actions: [
                     "Start the timer.",
-                    "Observe participant, maintaining a neutral demeanor.",
+                    "Observe participant, maintaining a neutral, unresponsive demeanor.",
                     "If participant stops early, use questions from Appendix A below.",
                     `When timer ends, state: <strong>"your time is up, please stop your speech".</strong>`
                 ],
+                context: "If the participant begins to ask questions about their speech, reiterate that they are explaining why they are the best candidate for the job, and 'do what they think is best', or 'say whatever comes to your mind'. Continue to redirect the participant to begin this speech.",
                 appendix: {
                     title: 'Follow-up Questions (Appendix A)',
                     content: `"Give me the most significant mistake you’ve made in your career. What exactly did you do wrong, and how did it affect your results?"\n\n"Describe a situation where a supervisor criticized your work. What was the criticism, and why should we trust that you’ve truly fixed the issue?"\n\n"Convince me that hiring you won’t be a risk to our organization’s reputation."\n\n"Explain the biggest gap or setback in your career and why it shouldn’t count against you compared with other applicants."\n\n"Tell me about a time you let a client or stakeholder down. What did you do to recover, and why shouldn’t we worry that it could happen here?"\n\n"Which core competency for this role is currently your weakest, and what concrete evidence shows you can overcome that weakness under pressure?"\n\n"If we surveyed your last team today, what would be the harshest piece of feedback they’d give about your leadership style?"\n\n"Assume you’re not selected for this position. What personal failing would most likely have caused that outcome?"`
@@ -325,9 +334,9 @@
                 script: `"When you have completed adding your entry into the I've noticed feature, please consume the provided liquid meal within five minutes.\" I will wait until you're finished. Please leave your camera on"`,
                 actions: [
                     "Start the 5-minute meal timer.",
-                    "Observe participant consuming the meal.",
-                    "Ensure they finish within the 5-minute window."
-                ]
+                    "Observe participant during consuming meal until timer reaches 00:00."
+                ],
+                context: "The participant needs to drink the entire beverage within 5 minutes. You can explain or express the significance of this if they are taking longer than usual. Drinks should also not be consumed in too short a time. Aim for approximately 5 minutes across all participants."
             });
             
             let endTimeString = '(Time will be calculated upon connection)';
