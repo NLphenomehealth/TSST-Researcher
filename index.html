@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSST Researcher Mirror</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .screen-mirror { transition: opacity 0.5s ease-in-out; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="bg-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div id="main-content" class="w-full">
+        <div id="app-container" class="bg-white p-6 sm:p-10 rounded-2xl shadow-2xl max-w-5xl w-full text-center relative transition-all duration-500 mx-auto">
+            
+            <!-- Session Input Screen -->
+            <div id="sessionInput" class="screen-mirror">
+                <h1 class="text-4xl font-extrabold text-gray-800 mb-4">TSST Researcher Mirror</h1>
+                <p class="text-gray-600 mb-6">Enter the 6-character Session ID from the participant's screen to connect.</p>
+                <div class="flex justify-center items-center gap-4">
+                    <input type="text" id="sessionIdField" maxlength="6" class="form-input text-center text-2xl font-mono uppercase w-48 px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                    <button id="connectBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg text-lg shadow-lg transform hover:scale-105 transition-transform" onclick="connectToSession()">Connect</button>
+                </div>
+                <p id="error-message" class="text-red-500 mt-4 font-semibold h-6"></p>
+            </div>
+
+            <!-- Mirror View Container -->
+            <div id="mirror-view" class="hidden">
+                <div id="session-id-display" class="absolute bottom-4 left-4 bg-gray-200 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg"></div>
+
+                <!-- Welcome Screen Mirror -->
+                <div id="welcome-mirror" class="screen-mirror hidden">
+                    <div class="max-w-4xl mx-auto">
+                        <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-800 mb-4">Participant Standby</h1>
+                        <p class="text-gray-600 mb-8 text-lg">Participant is at the welcome screen.</p>
+                        <div class="p-4 bg-indigo-50 rounded-lg text-indigo-700">Waiting for participant to start...</div>
+                    </div>
+                </div>
+                
+                <!-- Survey Screens Mirror -->
+                <div id="preBaselineSurvey-mirror" class="screen-mirror hidden"></div>
+                <div id="postTaskSurvey-mirror" class="screen-mirror hidden"></div>
+
+                <!-- Baseline Screen Mirror -->
+                <div id="baseline-mirror" class="screen-mirror hidden">
+                     <div class="max-w-4xl mx-auto">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Resting Baseline</h2>
+                        <p class="text-gray-600 mb-6">Participant is in the 3-minute resting period.</p>
+                        <div class="text-8xl font-mono font-bold my-4 text-gray-800" id="baselineTimer-mirror">3:00</div>
+                    </div>
+                </div>
+
+                <!-- Speech Preparation Mirror -->
+                <div id="speechPreparation-mirror" class="screen-mirror hidden">
+                    <div class="max-w-4xl mx-auto">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Speech Preparation</h2>
+                        <p class="text-gray-600 mb-6">Participant is in the 5-minute speech preparation period.</p>
+                        <div class="text-8xl font-mono font-bold my-4 text-gray-800" id="prepTimer-mirror">5:00</div>
+                    </div>
+                </div>
+
+                <!-- Speech Delivery Mirror -->
+                <div id="speechDelivery-mirror" class="screen-mirror hidden">
+                    <div class="max-w-4xl mx-auto">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Speech Delivery</h2>
+                        <p class="text-gray-600 mb-6">Participant is delivering their 5-minute speech.</p>
+                        <div class="text-8xl font-mono font-bold my-4 text-gray-800" id="speechTimer-mirror">5:00</div>
+                    </div>
+                </div>
+
+                <!-- Mental Arithmetic Mirror -->
+                <div id="mentalArithmetic-mirror" class="screen-mirror hidden">
+                    <div class="max-w-4xl mx-auto">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Mental Math Challenge</h2>
+                        <p class="text-gray-600 mb-6">Participant is performing the mental arithmetic task.</p>
+                        <div class="text-8xl font-mono font-bold my-4 text-gray-800" id="mathTimer-mirror">5:00</div>
+                    </div>
+                </div>
+
+                <!-- Meal Screen Mirror -->
+                <div id="meal-mirror" class="screen-mirror hidden">
+                    <div class="max-w-4xl mx-auto">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Meal Time</h2>
+                        <p class="text-gray-600 mx-auto mb-6">Participant is in the 5-minute meal period.</p>
+                        <div id="mealTimer-mirror" class="text-8xl font-mono font-bold my-4 text-gray-800">5:00</div>
+                    </div>
+                </div>
+
+                <!-- Complete Screen Mirror -->
+                <div id="complete-mirror" class="screen-mirror hidden">
+                    <div class="max-w-4xl mx-auto">
+                        <h1 class="text-5xl font-extrabold text-green-600 mb-4">Protocol Complete</h1>
+                        <p class="text-gray-700 text-lg">The participant has finished the test.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+        
+        let db, auth;
+        let unsubscribe = null;
+        let lastRenderedScreen = null;
+
+        window.onload = function() {
+            // This configuration MUST match the participant's application
+            const firebaseConfig = {
+                apiKey: "AIzaSyC-Yc9Vr2aWSc1u8YCNVFk48ijcix2Sg2c",
+                authDomain: "tsst-d6836.firebaseapp.com",
+                projectId: "tsst-d6836",
+                storageBucket: "tsst-d6836.appspot.com",
+                messagingSenderId: "55426434749",
+                appId: "1:55426434749:web:441d29af1ce3529a6019d4"
+            };
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('error');
+                signInAnonymously(auth).catch(error => console.error("Researcher auth error:", error));
+            } catch (e) {
+                console.error("Firebase initialization failed:", e);
+                document.getElementById('main-content').innerHTML = `<div class="bg-white p-8 rounded-lg shadow-xl"><h1 class="text-2xl font-bold text-red-600">Error: Could not connect to the server.</h1></div>`;
+            }
+        };
+
+        window.connectToSession = () => {
+            const sessionId = document.getElementById('sessionIdField').value.trim().toUpperCase();
+            const errorEl = document.getElementById('error-message');
+            const appId = "tsst-d6836"; // Must match the appId used in the participant's code
+            
+            if (sessionId.length !== 6) {
+                errorEl.textContent = 'Please enter a valid 6-character Session ID.';
+                return;
+            }
+            errorEl.textContent = 'Connecting...';
+            
+            if (unsubscribe) unsubscribe(); // Detach from previous session if any
+
+            const sessionRef = doc(db, `artifacts/${appId}/public/data/sessions`, sessionId);
+            
+            unsubscribe = onSnapshot(sessionRef, (doc) => {
+                if (doc.exists()) {
+                    errorEl.textContent = '';
+                    document.getElementById('sessionInput').style.display = 'none';
+                    document.getElementById('mirror-view').style.display = 'block';
+                    renderState(doc.data());
+                } else {
+                    errorEl.textContent = `Session "${sessionId}" not found. Please check the ID.`;
+                    document.getElementById('sessionInput').style.display = 'block';
+                    document.getElementById('mirror-view').style.display = 'none';
+                    if(unsubscribe) unsubscribe();
+                }
+            }, (error) => {
+                console.error("Snapshot error:", error);
+                errorEl.textContent = "Error connecting to the session.";
+            });
+        }
+        
+        function renderState(state) {
+            document.getElementById('session-id-display').innerHTML = `Mirroring Session: <span class="font-bold">${state.sessionId || ''}</span>`;
+
+            // Only redraw the whole screen if the screenId has changed
+            if (state.screenId !== lastRenderedScreen) {
+                document.querySelectorAll('.screen-mirror').forEach(el => el.classList.add('hidden'));
+                const currentScreenEl = document.getElementById(`${state.screenId}-mirror`);
+                if (currentScreenEl) {
+                    currentScreenEl.classList.remove('hidden');
+                }
+                lastRenderedScreen = state.screenId;
+            }
+
+            // Generic survey screen renderer
+            const surveyHtml = (stressId) => `<div class="max-w-4xl mx-auto text-left space-y-4"><h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">Participant is Logging Stress Level</h2><p>Instructions shown to participant:</p><div class="bg-gray-100 p-4 rounded-lg border border-gray-300"><p>Please open the <strong>MyT1Diabetes</strong> app and open the <strong>I’ve Noticed</strong> feature.</p><p>Select ‘Write a note’, tap the text box and enter: <code class="bg-gray-200 text-red-600 p-1 rounded">Stress ${stressId}=[your response to the survey below]</code>.</p></div><p class="text-center font-semibold text-indigo-600 mt-4">Waiting for participant to click "Next"...</p></div>`;
+
+            // Update content based on the current screen
+            switch(state.screenId) {
+                case 'preBaselineSurvey':
+                    document.getElementById('preBaselineSurvey-mirror').innerHTML = surveyHtml(0);
+                    break;
+                case 'postTaskSurvey':
+                    document.getElementById('postTaskSurvey-mirror').innerHTML = surveyHtml(1);
+                    break;
+                case 'baseline':
+                    document.getElementById('baselineTimer-mirror').textContent = state.timerValue || '3:00';
+                    break;
+                case 'speechPreparation':
+                    document.getElementById('prepTimer-mirror').textContent = state.timerValue || '5:00';
+                    break;
+                case 'speechDelivery':
+                    document.getElementById('speechTimer-mirror').textContent = state.timerValue || '5:00';
+                    break;
+                case 'mentalArithmetic':
+                    document.getElementById('mathTimer-mirror').textContent = state.timerValue || '5:00';
+                    break;
+                case 'meal':
+                    document.getElementById('mealTimer-mirror').textContent = state.timerValue || '5:00';
+                    break;
+            }
+        }
+    </script>
+</body>
+</html>
